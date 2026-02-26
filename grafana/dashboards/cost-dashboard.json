@@ -1,10 +1,64 @@
 {
-  "id": null,
-  "title": "Cost Overview",
-  "panels": [
-    { "type": "graph", "title": "Daily Cost", "targets": [] },
-    { "type": "table", "title": "Cost Breakdown", "targets": [] }
-  ],
-  "schemaVersion": 36,
-  "version": 1
+  "dashboard": {
+    "id": null,
+    "uid": "cost-overview",
+    "title": "Cost Overview",
+    "description": "AWS cost tracking and budget alerts dashboard.",
+    "timezone": "browser",
+    "schemaVersion": 36,
+    "version": 1,
+    "panels": [
+      {
+        "id": 1,
+        "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+        "type": "stat",
+        "title": "Daily Cost ($)",
+        "targets": [
+          {
+            "expr": "increase(aws_cost_total[1d])",
+            "refId": "A"
+          }
+        ]
+      },
+      {
+        "id": 2,
+        "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+        "type": "stat",
+        "title": "Monthly Cost ($)",
+        "targets": [
+          {
+            "expr": "increase(aws_cost_total[30d])",
+            "refId": "A"
+          }
+        ]
+      },
+      {
+        "id": 3,
+        "gridPos": { "h": 8, "w": 24, "x": 0, "y": 8 },
+        "type": "graph",
+        "title": "Daily Cost Trend",
+        "targets": [
+          {
+            "expr": "increase(aws_cost_total[1d])",
+            "legendFormat": "Daily Cost",
+            "refId": "A"
+          }
+        ]
+      },
+      {
+        "id": 4,
+        "gridPos": { "h": 8, "w": 24, "x": 0, "y": 16 },
+        "type": "table",
+        "title": "Cost by Service (7-day window)",
+        "targets": [
+          {
+            "expr": "sum(increase(aws_cost_total{service!=\"\"}[7d])) by (service)",
+            "format": "table",
+            "refId": "A"
+          }
+        ]
+      }
+    ],
+    "refresh": "5m"
+  }
 }

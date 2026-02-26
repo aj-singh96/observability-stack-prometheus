@@ -1,10 +1,78 @@
 {
-  "id": null,
-  "title": "SLO Overview",
-  "panels": [
-    { "type": "graph", "title": "Availability (30d)", "targets": [] },
-    { "type": "graph", "title": "Error Budget", "targets": [] }
-  ],
-  "schemaVersion": 36,
-  "version": 1
+  "dashboard": {
+    "id": null,
+    "uid": "slo-overview",
+    "title": "SLO Overview",
+    "description": "Service Level Objectives dashboard with error budget, burn rate, availability, and latency tracking.",
+    "timezone": "browser",
+    "schemaVersion": 36,
+    "version": 1,
+    "panels": [
+      {
+        "id": 1,
+        "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+        "type": "graph",
+        "title": "30-Day Availability (%)",
+        "targets": [
+          {
+            "expr": "slo:availability:30d",
+            "legendFormat": "Availability",
+            "refId": "A"
+          }
+        ]
+      },
+      {
+        "id": 2,
+        "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+        "type": "stat",
+        "title": "Error Budget Remaining (minutes/month)",
+        "targets": [
+          {
+            "expr": "slo:error_budget_remaining:30d",
+            "refId": "A"
+          }
+        ]
+      },
+      {
+        "id": 3,
+        "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+        "type": "graph",
+        "title": "Burn Rate (5m window)",
+        "targets": [
+          {
+            "expr": "slo:burn_rate:5m",
+            "legendFormat": "5m burn rate",
+            "refId": "A"
+          }
+        ]
+      },
+      {
+        "id": 4,
+        "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+        "type": "graph",
+        "title": "p95 Latency (seconds)",
+        "targets": [
+          {
+            "expr": "slo:latency_p95:5m",
+            "legendFormat": "p95",
+            "refId": "A"
+          }
+        ]
+      },
+      {
+        "id": 5,
+        "gridPos": { "h": 8, "w": 24, "x": 0, "y": 16 },
+        "type": "graph",
+        "title": "Error Rate (%)",
+        "targets": [
+          {
+            "expr": "slo:error_rate:5m",
+            "legendFormat": "Error Rate",
+            "refId": "A"
+          }
+        ]
+      }
+    ],
+    "refresh": "30s"
+  }
 }
