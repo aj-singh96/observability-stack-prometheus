@@ -7,6 +7,14 @@ terraform {
       version = "~>5.36"
     }
   }
+
+  backend "s3" {
+    bucket         = var.state_bucket
+    key            = "prod/terraform.tfstate"
+    encrypt        = true
+    dynamodb_table = var.lock_table
+    region         = var.region
+  }
 }
 
 provider "aws" {

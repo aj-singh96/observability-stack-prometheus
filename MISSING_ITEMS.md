@@ -5,7 +5,7 @@ This file tracks missing items from the Generation Reference. We'll complete the
 1. [x] Add `Makefile` with common automation targets (done)
 2. [x] Add `FUTURE_ENHANCEMENTS.md`
 3. [x] Add Terraform-managed Secrets Manager resources for grafana, prometheus, alertmanager, smtp
-4. [ ] Wire `terraform/environments/dev` backend to S3 + DynamoDB (enable remote state)
+4. [x] Wire `terraform/environments/dev` backend to S3 + DynamoDB (enable remote state)
 5. [ ] Replace placeholder secrets flow so no plaintext placeholders remain
 6. [ ] Replace placeholder secrets flow so no plaintext placeholders remain
 7. [ ] Implement `htpasswd` management and secure basic-auth provisioning script
