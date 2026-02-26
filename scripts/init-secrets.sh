@@ -8,8 +8,10 @@ for s in "${SECRETS[@]}"; do
   if aws secretsmanager describe-secret --secret-id "$s" >/dev/null 2>&1; then
     echo "Secret $s exists, skipping"
   else
-    aws secretsmanager create-secret --name "$s" --secret-string "REPLACE_ME_${s}"
-    echo "Created secret $s. Please update value via AWS console or aws secretsmanager put-secret-value."
+    # generate a secure random string (32 bytes base64)
+    rand=$(openssl rand -base64 32)
+    aws secretsmanager create-secret --name "$s" --secret-string "$rand"
+    echo "Created secret $s with a generated value. To override, run aws secretsmanager put-secret-value."
   fi
 done
 
