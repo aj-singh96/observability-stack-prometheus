@@ -19,6 +19,16 @@ module "security-group" {
   allowed_cidr_blocks = var.allowed_cidr_blocks
 }
 
+module "secrets" {
+  source = "../../modules/secrets"
+  secret_names = [
+    "grafana_admin_password",
+    "prometheus_basic_auth",
+    "alertmanager_basic_auth",
+    "smtp_credentials",
+  ]
+}
+
 module "iam" {
   source = "../../modules/iam"
 }
