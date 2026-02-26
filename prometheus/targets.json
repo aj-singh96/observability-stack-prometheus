@@ -1,0 +1,6 @@
+[
+  {
+    "labels": { "job": "local" },
+    "targets": ["localhost:9090"]
+  }
+]

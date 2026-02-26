@@ -1,0 +1,30 @@
+global:
+  resolve_timeout: 5m
+route:
+  group_by: ['alertname','service']
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 3h
+  receiver: 'pager'
+  routes:
+    - match:
+        severity: critical
+      receiver: 'pager'
+    - match:
+        severity: warning
+      receiver: 'email'
+
+receivers:
+  - name: 'pager'
+    webhook_configs:
+      - url: 'http://localhost:5001/pagerduty'
+  - name: 'email'
+    email_configs:
+      - to: 'oncall@example.com'
+        from: 'alertmanager@example.com'
+        smarthost: 'smtp.example.com:587'
+        auth_username: 'alertmanager'
+        auth_identity: 'alertmanager'
+        auth_password_file: '/run/secrets/smtp_credentials'
+
+templates: []

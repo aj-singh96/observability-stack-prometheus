@@ -1,0 +1,35 @@
+groups:
+  - name: traditional.rules
+    rules:
+      - alert: InstanceDown
+        expr: up == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Instance {{ $labels.instance }} down"
+
+      - alert: HighCPU
+        expr: node_cpu_seconds_total{mode!="idle"} > 0.9
+        for: 5m
+        labels:
+          severity: warning
+
+  - name: slo.rules
+    rules:
+      - record: slo:availability:30d
+        expr: (sum(rate(http_requests_total{job="app",status=~"2.."}[5m])) / sum(rate(http_requests_total{job="app"}[5m])))
+
+      - alert: SLOBurnRateFast
+        expr: slo:burn_rate:5m > 14.4
+        for: 5m
+        labels:
+          severity: critical
+
+  - name: cost.rules
+    rules:
+      - alert: MonthlyCostExceeded
+        expr: increase(aws_cost_total[30d]) > 20
+        for: 24h
+        labels:
+          severity: warning

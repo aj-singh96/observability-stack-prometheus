@@ -1,0 +1,11 @@
+name: Deploy Application
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run remote deploy (manual step)
+        run: echo "Manual deployment should SSH to instances and run setup scripts"

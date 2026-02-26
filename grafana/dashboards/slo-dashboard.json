@@ -1,0 +1,10 @@
+{
+  "id": null,
+  "title": "SLO Overview",
+  "panels": [
+    { "type": "graph", "title": "Availability (30d)", "targets": [] },
+    { "type": "graph", "title": "Error Budget", "targets": [] }
+  ],
+  "schemaVersion": 36,
+  "version": 1
+}

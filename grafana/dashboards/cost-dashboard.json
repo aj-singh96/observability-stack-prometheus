@@ -1,0 +1,10 @@
+{
+  "id": null,
+  "title": "Cost Overview",
+  "panels": [
+    { "type": "graph", "title": "Daily Cost", "targets": [] },
+    { "type": "table", "title": "Cost Breakdown", "targets": [] }
+  ],
+  "schemaVersion": 36,
+  "version": 1
+}

@@ -1,0 +1,10 @@
+variable "region" { default = "us-east-1" }
+variable "vpc_id" { type = string }
+variable "subnet_ids" { type = list(string) }
+variable "ami" { type = string }
+variable "key_name" { type = string }
+variable "instance_type" { default = "t3.small" }
+variable "instance_count" { default = 1 }
+variable "owner" { default = "team" }
+variable "environment" { default = "prod" }
+variable "allowed_cidr_blocks" { type = list(string) }
