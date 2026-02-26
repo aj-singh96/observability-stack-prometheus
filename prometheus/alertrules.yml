@@ -1,35 +1,363 @@
 groups:
-  - name: traditional.rules
+  - name: slo_recording_rules
+    interval: 15s
+    rules:
+      # Availability recording rules (5m, 30m, 1h, 6h, 30d windows)
+      - record: slo:availability:5m
+        expr: |
+          (
+            sum(rate(http_requests_total{job="app",status=~"2.."}[5m])) 
+            / 
+            sum(rate(http_requests_total{job="app"}[5m]))
+          ) * 100
+
+      - record: slo:availability:30m
+        expr: |
+          (
+            sum(rate(http_requests_total{job="app",status=~"2.."}[30m])) 
+            / 
+            sum(rate(http_requests_total{job="app"}[30m]))
+          ) * 100
+
+      - record: slo:availability:1h
+        expr: |
+          (
+            sum(rate(http_requests_total{job="app",status=~"2.."}[1h])) 
+            / 
+            sum(rate(http_requests_total{job="app"}[1h]))
+          ) * 100
+
+      - record: slo:availability:6h
+        expr: |
+          (
+            sum(rate(http_requests_total{job="app",status=~"2.."}[6h])) 
+            / 
+            sum(rate(http_requests_total{job="app"}[6h]))
+          ) * 100
+
+      - record: slo:availability:30d
+        expr: |
+          (
+            sum(increase(http_requests_total{job="app",status=~"2.."}[30d])) 
+            / 
+            sum(increase(http_requests_total{job="app"}[30d]))
+          ) * 100
+
+      # Error budget recording rules
+      - record: slo:error_budget:30d
+        expr: (100 - 99.9) * 30 * 24 * 60 / 100
+
+      - record: slo:error_budget_remaining:30d
+        expr: |
+          (
+            (100 - 99.9) * 30 * 24 * 60 / 100
+            -
+            (
+              100 - (
+                sum(increase(http_requests_total{job="app",status=~"2.."}[30d])) 
+                / 
+                sum(increase(http_requests_total{job="app"}[30d]))
+              ) * 100
+            ) * 30 * 24 * 60 / 100
+          )
+
+      # Latency recording rules (p95, p99)
+      - record: slo:latency_p95:5m
+        expr: histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le))
+
+      - record: slo:latency_p95:30m
+        expr: histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[30m])) by (le))
+
+      - record: slo:latency_p95:1h
+        expr: histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[1h])) by (le))
+
+      - record: slo:latency_p95:6h
+        expr: histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[6h])) by (le))
+
+      - record: slo:latency_p99:5m
+        expr: histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket[5m])) by (le))
+
+      - record: slo:latency_p99:30m
+        expr: histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket[30m])) by (le))
+
+      # Error rate recording rules
+      - record: slo:error_rate:5m
+        expr: |
+          (
+            sum(rate(http_requests_total{job="app",status=~"5.."}[5m])) 
+            / 
+            sum(rate(http_requests_total{job="app"}[5m]))
+          ) * 100
+
+      - record: slo:error_rate:30m
+        expr: |
+          (
+            sum(rate(http_requests_total{job="app",status=~"5.."}[30m])) 
+            / 
+            sum(rate(http_requests_total{job="app"}[30m]))
+          ) * 100
+
+      - record: slo:error_rate:1h
+        expr: |
+          (
+            sum(rate(http_requests_total{job="app",status=~"5.."}[1h])) 
+            / 
+            sum(rate(http_requests_total{job="app"}[1h]))
+          ) * 100
+
+      # Burn rate recording rules (fast and slow)
+      - record: slo:burn_rate:5m
+        expr: |
+          (
+            (100 - slo:availability:5m) / (100 - 99.9) 
+          )
+
+      - record: slo:burn_rate:30m
+        expr: |
+          (
+            (100 - slo:availability:30m) / (100 - 99.9) 
+          )
+
+      - record: slo:burn_rate:1h
+        expr: |
+          (
+            (100 - slo:availability:1h) / (100 - 99.9) 
+          )
+
+      - record: slo:burn_rate:6h
+        expr: |
+          (
+            (100 - slo:availability:6h) / (100 - 99.9) 
+          )
+
+      # Multi-service aggregations
+      - record: slo:multi_service:availability
+        expr: |
+          (
+            sum(rate(http_requests_total{status=~"2.."}[5m])) by (service)
+            /
+            sum(rate(http_requests_total[5m])) by (service)
+          ) * 100
+
+      - record: slo:multi_service:latency_p95
+        expr: |
+          histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (service, le))
+
+  - name: traditional_alerts
+    interval: 15s
     rules:
       - alert: InstanceDown
         expr: up == 0
         for: 2m
         labels:
           severity: critical
+          service: infrastructure
         annotations:
           summary: "Instance {{ $labels.instance }} down"
+          description: "Instance {{ $labels.instance }} has been down for more than 2 minutes."
 
-      - alert: HighCPU
-        expr: node_cpu_seconds_total{mode!="idle"} > 0.9
+      - alert: HighCPUUsage
+        expr: (1 - avg by (instance) (rate(node_cpu_seconds_total{mode="idle"}[5m]))) * 100 > 80
         for: 5m
         labels:
           severity: warning
+          service: infrastructure
+        annotations:
+          summary: "High CPU usage on {{ $labels.instance }}"
+          description: "CPU usage is {{ $value }}% on {{ $labels.instance }}."
 
-  - name: slo.rules
-    rules:
-      - record: slo:availability:30d
-        expr: (sum(rate(http_requests_total{job="app",status=~"2.."}[5m])) / sum(rate(http_requests_total{job="app"}[5m])))
-
-      - alert: SLOBurnRateFast
-        expr: slo:burn_rate:5m > 14.4
+      - alert: HighMemoryUsage
+        expr: (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 85
         for: 5m
+        labels:
+          severity: warning
+          service: infrastructure
+        annotations:
+          summary: "High memory usage on {{ $labels.instance }}"
+          description: "Memory usage is {{ $value }}% on {{ $labels.instance }}."
+
+      - alert: HighDiskUsage
+        expr: (node_filesystem_avail_bytes{fstype=~"ext4|xfs"} / node_filesystem_size_bytes) * 100 < 15
+        for: 5m
+        labels:
+          severity: warning
+          service: infrastructure
+        annotations:
+          summary: "High disk usage on {{ $labels.device }}"
+          description: "Disk {{ $labels.device }} is {{ $value }}% full."
+
+      - alert: HighIOWait
+        expr: avg by (instance) (rate(node_cpu_seconds_total{mode="iowait"}[5m])) * 100 > 20
+        for: 5m
+        labels:
+          severity: warning
+          service: infrastructure
+        annotations:
+          summary: "High I/O wait on {{ $labels.instance }}"
+          description: "I/O wait is {{ $value }}% on {{ $labels.instance }}."
+
+      - alert: NetworkErrors
+        expr: increase(node_network_transmit_errs_total[5m]) > 0 or increase(node_network_receive_errs_total[5m]) > 0
+        for: 2m
+        labels:
+          severity: warning
+          service: infrastructure
+        annotations:
+          summary: "Network errors on {{ $labels.instance }}"
+          description: "Network errors detected on {{ $labels.device }}."
+
+      - alert: PrometheusConfigError
+        expr: prometheus_config_last_reload_successful == 0
+        for: 1m
         labels:
           severity: critical
+          service: prometheus
+        annotations:
+          summary: "Prometheus config reload failed"
+          description: "Prometheus failed to reload its configuration."
 
-  - name: cost.rules
-    rules:
-      - alert: MonthlyCostExceeded
-        expr: increase(aws_cost_total[30d]) > 20
-        for: 24h
+      - alert: PrometheusRestartCount
+        expr: increase(prometheus_tsdb_reloads_total[1h]) > 5
+        for: 5m
         labels:
           severity: warning
+          service: prometheus
+        annotations:
+          summary: "Prometheus restarts detected"
+          description: "Prometheus has restarted {{ $value }} times in the last hour."
+
+      - alert: AlertmanagerDown
+        expr: up{job="alertmanager"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          service: alertmanager
+        annotations:
+          summary: "AlertManager is down"
+          description: "AlertManager has been down for more than 2 minutes."
+
+  - name: slo_alerts
+    interval: 15s
+    rules:
+      - alert: SLOBurnRateFast5m
+        expr: slo:burn_rate:5m > 14.4 and slo:burn_rate:30m > 14.4
+        for: 2m
+        labels:
+          severity: critical
+          slo_alert: "true"
+          burn_type: fast
+        annotations:
+          summary: "SLO error budget burning fast (5m window)"
+          description: "Burn rate is {{ $value }}x over 5m. Error budget exhaustion in ~1 hour."
+
+      - alert: SLOBurnRateSlow1h
+        expr: slo:burn_rate:1h > 6 and slo:burn_rate:6h > 6
+        for: 15m
+        labels:
+          severity: warning
+          slo_alert: "true"
+          burn_type: slow
+        annotations:
+          summary: "SLO error budget burning slowly (1h window)"
+          description: "Burn rate is {{ $value }}x over 1h. Error budget exhaustion in ~1 week."
+
+      - alert: LatencyBreach
+        expr: slo:latency_p95:5m > 0.5
+        for: 5m
+        labels:
+          severity: warning
+          slo_alert: "true"
+        annotations:
+          summary: "p95 latency breach (target: < 500ms)"
+          description: "p95 latency is {{ $value }}s, exceeding SLO target of 500ms."
+
+      - alert: ErrorRateBreach
+        expr: slo:error_rate:5m > 0.1
+        for: 5m
+        labels:
+          severity: warning
+          slo_alert: "true"
+        annotations:
+          summary: "Error rate breach (target: < 0.1%)"
+          description: "Error rate is {{ $value }}%, exceeding SLO target of 0.1%."
+
+      - alert: ErrorBudgetExhausted
+        expr: slo:error_budget_remaining:30d <= 0
+        for: 1m
+        labels:
+          severity: critical
+          slo_alert: "true"
+        annotations:
+          summary: "30-day error budget exhausted"
+          description: "Monthly error budget has been fully consumed. SLO is now at risk."
+
+      - alert: SSLCertificateExpiring
+        expr: (ssl_cert_expiry_days < 30) and (ssl_cert_expiry_days > 0)
+        for: 1h
+        labels:
+          severity: warning
+          slo_alert: "true"
+        annotations:
+          summary: "SSL certificate expiring soon"
+          description: "SSL certificate expires in {{ $value }} days."
+
+  - name: cost_alerts
+    interval: 15m
+    rules:
+      - alert: DailyCostBudgetExceeded
+        expr: increase(aws_cost_total[1d]) > 2
+        for: 10m
+        labels:
+          severity: warning
+          cost_alert: "true"
+        annotations:
+          summary: "Daily cost budget exceeded (target: $2/day)"
+          description: "Today's cost is ${{ $value }}, exceeding daily budget of $2."
+
+      - alert: MonthlyCostBudgetExceeded
+        expr: increase(aws_cost_total[30d]) > 20
+        for: 1h
+        labels:
+          severity: warning
+          cost_alert: "true"
+        annotations:
+          summary: "Monthly cost budget exceeded (target: $20/mo)"
+          description: "Monthly cost is ${{ $value }}, exceeding budget of $20."
+
+      - alert: CostSpikeLarge
+        expr: |
+          increase(aws_cost_total[1d]) > 
+          (
+            avg_over_time(increase(aws_cost_total[1d])[7d:1d]) * 1.2
+          )
+        for: 30m
+        labels:
+          severity: warning
+          cost_alert: "true"
+        annotations:
+          summary: "Unusual cost spike detected (>20%)"
+          description: "Daily cost increased by more than 20% from 7-day average."
+
+      - alert: CostForecastWarning
+        expr: increase(aws_cost_total[7d]) * 4.3 > 25
+        for: 2h
+        labels:
+          severity: info
+          cost_alert: "true"
+        annotations:
+          summary: "Projected monthly cost forecast high"
+          description: "Current burn rate projects to ${{ $value }}/month, above budget."
+
+      - alert: UnusedInstanceWarning
+        expr: |
+          (
+            avg(rate(node_cpu_seconds_total{mode!="idle"}[5m])) 
+            by (instance)
+          ) < 0.05
+        for: 1h
+        labels:
+          severity: info
+          cost_alert: "true"
+        annotations:
+          summary: "Instance {{ $labels.instance }} has low CPU utilization"
+          description: "Average CPU usage is {{ $value | humanizePercentage }} — consider downsizing."

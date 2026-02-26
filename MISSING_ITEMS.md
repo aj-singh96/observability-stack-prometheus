@@ -8,9 +8,9 @@ This file tracks missing items from the Generation Reference. We'll complete the
 4. [x] Wire `terraform/environments/dev` backend to S3 + DynamoDB (enable remote state)
 5. [x] Replace placeholder secrets flow so no plaintext placeholders remain
 6. [ ] Replace placeholder secrets flow so no plaintext placeholders remain
-7. [ ] Implement `htpasswd` management and secure basic-auth provisioning script
-8. [ ] Expand Prometheus recording rules to 28 rules (multi-window, availability, latency, error budget)
-9. [ ] Expand Alerting rules to 25+ alerts (traditional, SLO multi-burn-rate, cost alerts)
+6. [x] Implement `htpasswd` management and secure basic-auth provisioning script
+7. [x] Expand Prometheus recording rules to 28 rules (multi-window, availability, latency, error budget)
+8. [x] Expand Alerting rules to 25+ alerts (traditional, SLO multi-burn-rate, cost alerts)
 10. [ ] Populate Grafana dashboards with real panel queries for SLO and Cost
 11. [ ] Harden `scripts/cost-exporter.py` (date ranges, pagination, retries, metrics labels)
 12. [ ] Expand `docs/SLO.md` to detailed 600+ line SLO guide
