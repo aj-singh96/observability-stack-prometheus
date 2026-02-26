@@ -32,8 +32,8 @@ if [ -n "$SECPROM" ]; then PROM_PASS="$SECPROM"; fi
 if [ -n "$SECAM_USER" ]; then AM_USER="$SECAM_USER"; fi
 if [ -n "$SECAM" ]; then AM_PASS="$SECAM"; fi
 
-# Create htpasswd files, fall back handled above
-printf "%s\n" "$PROM_PASS" | htpasswd -nic "$PROM_USER" - > /etc/nginx/.htpasswd-prometheus
-printf "%s\n" "$AM_PASS" | htpasswd -nic "$AM_USER" - > /etc/nginx/.htpasswd-alertmanager
+# Create htpasswd files
+echo "$PROM_PASS" | htpasswd -ci "/etc/nginx/.htpasswd-prometheus" "$PROM_USER" <&0
+echo "$AM_PASS" | htpasswd -ci "/etc/nginx/.htpasswd-alertmanager" "$AM_USER" <&0
 
 exec nginx -g "daemon off;"

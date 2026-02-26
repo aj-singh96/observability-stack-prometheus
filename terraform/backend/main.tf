@@ -7,8 +7,8 @@ provider "aws" {
 }
 
 resource "aws_s3_bucket" "tf_state" {
-  bucket = var.bucket_name
-  acl    = "private"
+  bucket        = var.bucket_name
+  acl           = "private"
   force_destroy = true
 
   versioning {

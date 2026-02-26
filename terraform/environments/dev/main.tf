@@ -22,16 +22,16 @@ provider "aws" {
 
   default_tags {
     tags = {
-      Project     = "Prometheus Observability Stack"
-      ManagedBy   = "Terraform"
+      Project   = "Prometheus Observability Stack"
+      ManagedBy = "Terraform"
     }
   }
 }
 
 module "../modules/security-group" {
-  vpc_id            = var.vpc_id
-  ssm_cidr_blocks   = var.ssm_cidr_blocks
-  var_cidr_blocks   = var.var_cidr_blocks
+  vpc_id              = var.vpc_id
+  ssm_cidr_blocks     = var.ssm_cidr_blocks
+  var_cidr_blocks     = var.var_cidr_blocks
   allowed_cidr_blocks = var.allowed_cidr_blocks
 }
 
@@ -49,18 +49,18 @@ module "iam" {
   source = "../modules/iam"
 }
 
-name      = var.project_name
-version   = var.project_version
+name    = var.project_name
+version = var.project_version
 
 module "ec2" {
   source = "../modules/ec2"
 
-  ami             = var.ami
-  key_name        = var.key_name
-  instance_type   = var.instance_type
-  instance_count  = var.instance_count
-  subnet_ids      = module.security-group.subnet_ids
-  create_eip      = var.create_eip
-  owner           = var.owner
-  environment     = var.environment
+  ami            = var.ami
+  key_name       = var.key_name
+  instance_type  = var.instance_type
+  instance_count = var.instance_count
+  subnet_ids     = module.security-group.subnet_ids
+  create_eip     = var.create_eip
+  owner          = var.owner
+  environment    = var.environment
 }

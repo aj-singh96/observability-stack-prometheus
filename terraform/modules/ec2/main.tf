@@ -29,7 +29,7 @@ resource "aws_instance" "app" {
 }
 
 resource "aws_eip" "eip" {
-  count = var.create_eip ? var.instance_count : 0
+  count    = var.create_eip ? var.instance_count : 0
   instance = aws_instance.app[count.index].id
 }
 
