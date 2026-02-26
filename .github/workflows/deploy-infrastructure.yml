@@ -10,18 +10,41 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v2
-      - name: Terraform Init
+
+      # Format check
+      - name: Terraform fmt check
+        working-directory: terraform
+        run: |
+          if ! terraform fmt -check -recursive .; then
+            echo "⚠️ format invalid; run: terraform fmt -recursive ."
+            exit 1
+          fi
+
+      # Validate
+      - name: Terraform Init (dev)
         working-directory: terraform/environments/dev
-        run: terraform init
-      - name: Terraform Validate
+        run: terraform init -backend=false
+
+      - name: Terraform Validate (dev)
         working-directory: terraform/environments/dev
         run: terraform validate
-      - name: Terraform Plan
+
+      # Plan
+      - name: Terraform Plan (dev)
         working-directory: terraform/environments/dev
+        env:
+          TF_VAR_state_bucket: ${{ secrets.TF_STATE_BUCKET }}
+          TF_VAR_lock_table: ${{ secrets.TF_LOCK_TABLE }}
         run: terraform plan -out=tfplan
-      - name: Terraform Apply
+
+      # Apply only on push to main
+      - name: Terraform Apply (dev)
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         working-directory: terraform/environments/dev
+        env:
+          TF_VAR_state_bucket: ${{ secrets.TF_STATE_BUCKET }}
+          TF_VAR_lock_table: ${{ secrets.TF_LOCK_TABLE }}
         run: terraform apply -auto-approve tfplan
