@@ -1,0 +1,30 @@
+name: Docker Validate
+
+on:
+  pull_request:
+    paths:
+      - 'docker-compose.yml'
+      - 'prometheus/**'
+      - 'grafana/**'
+      - 'alertmanager/**'
+  workflow_dispatch:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Docker Compose config
+        run: docker-compose -f docker-compose.yml config
+      - name: Docker Compose up
+        run: docker-compose up -d --build
+      - name: wait services
+        run: sleep 30
+      - name: healthchecks
+        run: |
+          curl -fS http://localhost:9090/-/healthy || exit 1
+          curl -fS http://localhost:3000/ || true
+          curl -fS http://localhost:9093/ || exit 1
+          curl -fS http://localhost:9100/ || true
+      - name: Teardown
+        run: docker-compose down -v

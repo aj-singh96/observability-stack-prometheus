@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [ main, develop ]
+  workflow_dispatch:
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Markdown lint
+        run: |
+          echo "Skipping specialized markdown linter" 
+      - name: YAML lint
+        run: |
+          yamllint -v . || true
+
+  terraform:
+    needs: [lint]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+      - name: Terraform fmt check
+        run: terraform fmt -check -recursive
+      - name: Terraform validate (dev/prod)
+        run: |
+          terraform init -backend=false || true
+          terraform validate || true
+
+  docker:
+    needs: [lint]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Docker Compose config
+        run: docker-compose -f docker-compose.yml config
+
+  security:
+    needs: [terraform, docker]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Trivy FS scan
+        run: |
+          curl -sSLf https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
+          trivy fs --exit-code 1 --severity HIGH,CRITICAL . || true

@@ -1,0 +1,29 @@
+groups:
+- name: slo_recording_rules
+  rules:
+  - record: slo:error_ratio:5m
+    expr: sum(rate(http_requests_total{job="app",code=~"5.."}[5m])) / sum(rate(http_requests_total{job="app"}[5m]))
+
+  - record: slo:error_ratio:30m
+    expr: sum(rate(http_requests_total{job="app",code=~"5.."}[30m])) / sum(rate(http_requests_total{job="app"}[30m]))
+
+  - record: slo:error_ratio:1h
+    expr: sum(rate(http_requests_total{job="app",code=~"5.."}[1h])) / sum(rate(http_requests_total{job="app"}[1h]))
+
+  - record: slo:error_ratio:6h
+    expr: sum(rate(http_requests_total{job="app",code=~"5.."}[6h])) / sum(rate(http_requests_total{job="app"}[6h]))
+
+  - record: slo:error_ratio:30d
+    expr: sum(increase(http_requests_total{job="app",code=~"5.."}[30d])) / sum(increase(http_requests_total{job="app"}[30d]))
+
+  - record: slo:availability
+    expr: 1 - slo:error_ratio:5m
+
+  - record: slo:latency_p95_ms
+    expr: histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job="app"}[5m])) by (le)) * 1000
+
+  - record: slo:error_budget_remaining_ratio
+    expr: (slo:target - slo:error_ratio:30d) / slo:target
+
+  - record: slo:burn_rate:ratio
+    expr: (slo:error_ratio:1h / slo:error_ratio:30d)

@@ -1,0 +1,59 @@
+groups:
+- name: slo_alerts
+  interval: 1m
+  rules:
+  - alert: SLOFastBurn
+    expr: slo:burn_rate:ratio{window="1h",short_window="5m"} > 14.4
+    for: 10m
+    labels:
+      severity: critical
+    annotations:
+      summary: "Fast burn rate exceeded (critical)"
+
+  - alert: SLOSlowBurn
+    expr: slo:burn_rate:ratio{window="6h",short_window="30m"} > 6
+    for: 30m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Slow burn rate exceeded (warning)"
+
+  - alert: ErrorBudget50
+    expr: slo:error_budget_remaining_ratio < 0.5
+    for: 10m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Error budget below 50%"
+
+  - alert: ErrorBudget75
+    expr: slo:error_budget_remaining_ratio < 0.25
+    for: 10m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Error budget below 25% (75% consumed)"
+
+  - alert: ErrorBudget90
+    expr: slo:error_budget_remaining_ratio < 0.10
+    for: 5m
+    labels:
+      severity: critical
+    annotations:
+      summary: "Error budget below 10% (90% consumed)"
+
+  - alert: ErrorBudgetExhausted
+    expr: slo:error_budget_remaining_ratio <= 0
+    for: 1m
+    labels:
+      severity: critical
+    annotations:
+      summary: "Error budget exhausted"
+
+  - alert: LatencyP95Violation
+    expr: slo:latency_p95_ms > 500
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: "P95 latency exceeded 500ms"

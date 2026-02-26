@@ -1,0 +1,51 @@
+groups:
+- name: cost_alerts
+  interval: 5m
+  rules:
+  - alert: DailyCostHigh
+    expr: sum(increase(aws_cost_total[1d])) > 2
+    for: 1h
+    labels:
+      severity: warning
+    annotations:
+      summary: "Daily AWS cost exceeded $2"
+
+  - alert: MonthlyCostHighDev
+    expr: sum(increase(aws_cost_total{environment="dev"}[30d])) > 20
+    for: 2h
+    labels:
+      severity: warning
+    annotations:
+      summary: "Monthly cost for dev exceeded $20"
+
+  - alert: MonthlyCostHighProd
+    expr: sum(increase(aws_cost_total{environment="prod"}[30d])) > 50
+    for: 2h
+    labels:
+      severity: critical
+    annotations:
+      summary: "Monthly cost for prod exceeded $50"
+
+  - alert: CostSpikeDayOverDay
+    expr: (sum(increase(aws_cost_total[1d])) - sum(increase(aws_cost_total[2d]))/1) / (sum(increase(aws_cost_total[2d]))/1 + 1e-9) > 0.20
+    for: 30m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Cost spike >20% day-over-day"
+
+  - alert: CostForecastExceedsBudget
+    expr: predict_linear(sum(aws_cost_total[7d]), 86400) > 100
+    for: 1h
+    labels:
+      severity: warning
+    annotations:
+      summary: "7-day trend forecasts exceeding budget"
+
+  - alert: ServiceCostAnomaly
+    expr: increase(aws_cost_service_total[1d]) > (0.2 * increase(aws_cost_service_total[30d]) / 30)
+    for: 1h
+    labels:
+      severity: warning
+    annotations:
+      summary: "Service cost anomaly detected"
