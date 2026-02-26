@@ -14,7 +14,7 @@ Quick start:
 4. Deploy application: SSH to instance and run `./scripts/setup.sh`
 
 Access:
-- Grafana: https://<instance-ip>/
+- Grafana: https://<instance-ip>/ (dashboards, no auth required)
 - Prometheus: https://<instance-ip>/prometheus (basic auth)
 - Alertmanager: https://<instance-ip>/alertmanager (basic auth)
 
