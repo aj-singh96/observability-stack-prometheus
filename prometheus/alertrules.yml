@@ -143,6 +143,39 @@ groups:
         expr: |
           histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (service, le))
 
+      # Request count recording rules
+      - record: slo:request_rate:5m
+        expr: sum(rate(http_requests_total[5m]))
+
+      - record: slo:request_rate:30m
+        expr: sum(rate(http_requests_total[30m]))
+
+      # p50 and p99 latency (additional windows)
+      - record: slo:latency_p50:5m
+        expr: histogram_quantile(0.50, sum(rate(http_request_duration_seconds_bucket[5m])) by (le))
+
+      - record: slo:latency_p99:6h
+        expr: histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket[6h])) by (le))
+
+      # Additional multi-window error metrics
+      - record: slo:error_rate:6h
+        expr: |
+          (
+            sum(rate(http_requests_total{job="app",status=~"5.."}[6h])) 
+            / 
+            sum(rate(http_requests_total{job="app"}[6h]))
+          ) * 100
+
+      - record: slo:error_rate:30d
+        expr: |
+          (
+            sum(increase(http_requests_total{job="app",status=~"5.."}[30d])) 
+            / 
+            sum(increase(http_requests_total{job="app"}[30d]))
+          ) * 100
+
+
+
   - name: traditional_alerts
     interval: 15s
     rules:
@@ -361,3 +394,53 @@ groups:
         annotations:
           summary: "Instance {{ $labels.instance }} has low CPU utilization"
           description: "Average CPU usage is {{ $value | humanizePercentage }} — consider downsizing."
+
+      - alert: AvailabilityBreach
+        expr: slo:availability:5m < 99.9
+        for: 5m
+        labels:
+          severity: warning
+          slo_alert: "true"
+        annotations:
+          summary: "Service availability below SLO target"
+          description: "Availability is {{ $value }}%, below SLO target of 99.9%."
+
+      - alert: PrometheusHighMemory
+        expr: prometheus_tsdb_symbol_table_size_bytes > 1073741824
+        for: 5m
+        labels:
+          severity: warning
+          service: prometheus
+        annotations:
+          summary: "Prometheus high memory usage"
+          description: "Prometheus symbol table is {{ $value | humanize }}B, consider increasing retention or diskspace."
+
+      - alert: GrafanaDown
+        expr: up{job="grafana"} == 0
+        for: 2m
+        labels:
+          severity: warning
+          service: grafana
+        annotations:
+          summary: "Grafana is down"
+          description: "Grafana has been down for more than 2 minutes."
+
+      - alert: NodeExporterDown
+        expr: up{job="node_exporter"} == 0
+        for: 2m
+        labels:
+          severity: warning
+          service: node_exporter
+        annotations:
+          summary: "Node Exporter is down on {{ $labels.instance }}"
+          description: "Node Exporter on {{ $labels.instance }} has been down for more than 2 minutes."
+
+      - alert: CostExporterDown
+        expr: up{job="cost_exporter"} == 0
+        for: 5m
+        labels:
+          severity: info
+          cost_alert: "true"
+        annotations:
+          summary: "Cost Exporter is down"
+          description: "Cost Exporter has been down for more than 5 minutes. Cost metrics will not be collected."
