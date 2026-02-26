@@ -17,4 +17,15 @@ Access:
 - Grafana: https://<instance-ip>/
 - Prometheus: https://<instance-ip>/prometheus (basic auth)
 - Alertmanager: https://<instance-ip>/alertmanager (basic auth)
-# observability-stack-prometheus
+
+## Documentation
+
+- [Architecture](ARCHITECTURE.md) - System design, data flow, and component interactions
+- [SLO Guide](docs/SLO.md) - SLO definitions and error budget tracking
+- [Cost Monitoring](docs/COST.md) - AWS cost tracking and anomaly detection
+- [Security](docs/SECURITY.md) - Security hardening, credential management, compliance
+- [Runbooks](docs/RUNBOOKS.md) - Operational procedures and incident response
+
+## License
+
+MIT
