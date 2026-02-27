@@ -3,32 +3,27 @@ output "instance_ids" {
   value       = module.ec2.instance_ids
 }
 
-output "instance_public_ip" {
-  description = "EC2 instance public IP"
-  value       = module.ec2.instance_public_ip
+output "instance_public_ips" {
+  description = "EC2 instance public IPs"
+  value       = module.ec2.instance_public_ips
 }
 
 output "instance_public_dns" {
-  description = "EC2 instance public DNS"
+  description = "EC2 instance public DNS names"
   value       = module.ec2.instance_public_dns
 }
 
 output "security_group_id" {
   description = "Security Group ID"
-  value       = module.security-group.security_group_id
+  value       = module.security_group.security_group_id
 }
 
 output "prometheus_url" {
   description = "Prometheus URL"
-  value       = "https://module.ec2.instance_public_ip:9090"
+  value       = "https://${module.ec2.instance_public_ips[0]}:9090"
 }
 
 output "grafana_url" {
   description = "Grafana URL"
-  value       = "https://module.ec2.instance_public_ip:3000"
-}
-
-output "alertmanager_url" {
-  description = "Alertmanager URL"
-  value       = "https://module.ec2.instance_public_ip:9093"
+  value       = "https://${module.ec2.instance_public_ips[0]}:3000"
 }

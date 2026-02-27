@@ -1,66 +1,78 @@
 terraform {
-  required_version = "~>1.5"
+  required_version = ">= 1.5.0"
 
   required_providers {
     aws = {
       source  = "hashicorp/aws"
-      version = "~>5.36"
+      version = "~> 5.0"
     }
   }
 
-  backend "s3" {
-    bucket         = var.state_bucket
-    key            = "dev/terraform.tfstate"
-    encrypt        = true
-    dynamodb_table = var.lock_table
-    region         = var.region
-  }
+  # Uncomment after creating backend resources (terraform/backend/)
+  # backend "s3" {
+  #   bucket         = "prometheus-stack-state-xxxxx"
+  #   key            = "prometheus/dev/terraform.tfstate"
+  #   region         = "us-west-2"
+  #   dynamodb_table = "prometheus-terraform-lock"
+  #   encrypt        = true
+  # }
 }
 
 provider "aws" {
-  region = var.region
+  region = var.aws_region
 
   default_tags {
     tags = {
-      Project   = "Prometheus Observability Stack"
-      ManagedBy = "Terraform"
+      Project     = var.project_name
+      Environment = var.environment
+      ManagedBy   = "Terraform"
     }
   }
 }
 
-module "../modules/security-group" {
+module "security_group" {
+  source = "../../modules/security-group"
+
+  name                = var.project_name
   vpc_id              = var.vpc_id
-  ssm_cidr_blocks     = var.ssm_cidr_blocks
-  var_cidr_blocks     = var.var_cidr_blocks
+  environment         = var.environment
+  ssh_cidr_blocks     = var.ssh_cidr_blocks
   allowed_cidr_blocks = var.allowed_cidr_blocks
 }
 
 module "secrets" {
-  source = "../modules/secrets"
+  source = "../../modules/secrets"
+
   secret_names = [
-    "grafana_admin_password",
-    "prometheus_basic_auth",
-    "alertmanager_basic_auth",
-    "smtp_credentials",
+    "prometheus/grafana",
+    "prometheus/prometheus-auth",
+    "prometheus/alertmanager-auth",
+    "prometheus/alertmanager"
   ]
 }
 
 module "iam" {
-  source = "../modules/iam"
+  source = "../../modules/iam"
+
+  name        = var.project_name
+  environment = var.environment
 }
 
-name    = var.project_name
-version = var.project_version
-
 module "ec2" {
-  source = "../modules/ec2"
+  source = "../../modules/ec2"
 
-  ami            = var.ami
-  key_name       = var.key_name
-  instance_type  = var.instance_type
-  instance_count = var.instance_count
-  subnet_ids     = module.security-group.subnet_ids
-  create_eip     = var.create_eip
-  owner          = var.owner
-  environment    = var.environment
+  name                 = var.project_name
+  ami_id               = var.ami_id
+  instance_type        = var.instance_type
+  key_name             = var.key_name
+  instance_count       = var.instance_count
+  subnet_ids           = var.subnet_ids
+  volume_size          = var.volume_size
+  create_eip           = var.create_eip
+  environment          = var.environment
+  cost_center          = var.cost_center
+  application          = var.application
+  owner                = var.owner
+  security_group_ids   = [module.security_group.security_group_id]
+  iam_instance_profile = module.iam.instance_profile_name
 }

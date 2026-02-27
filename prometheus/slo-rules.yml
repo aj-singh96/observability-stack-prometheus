@@ -1,29 +1,81 @@
 groups:
-- name: slo_recording_rules
-  rules:
-  - record: slo:error_ratio:5m
-    expr: sum(rate(http_requests_total{job="app",code=~"5.."}[5m])) / sum(rate(http_requests_total{job="app"}[5m]))
+  - name: sli_availability
+    interval: 30s
+    rules:
+      - record: sli:grafana:availability:rate5m
+        expr: sum(rate(http_requests_total{job="grafana",code=~"2.."}[5m])) / sum(rate(http_requests_total{job="grafana"}[5m]))
 
-  - record: slo:error_ratio:30m
-    expr: sum(rate(http_requests_total{job="app",code=~"5.."}[30m])) / sum(rate(http_requests_total{job="app"}[30m]))
+      - record: sli:prometheus:availability:rate5m
+        expr: sum(rate(prometheus_http_requests_total{handler="/api/v1/query"}[5m]) and on (instance) prometheus_up) / sum(rate(prometheus_http_requests_total{handler="/api/v1/query"}[5m]))
 
-  - record: slo:error_ratio:1h
-    expr: sum(rate(http_requests_total{job="app",code=~"5.."}[1h])) / sum(rate(http_requests_total{job="app"}[1h]))
+      - record: sli:alertmanager:availability:rate5m
+        expr: sum(rate(alertmanager_http_requests_total{handler="/api/v1/alerts"}[5m])) / sum(rate(alertmanager_http_requests_total{handler="/api/v1/alerts"}[5m]))
 
-  - record: slo:error_ratio:6h
-    expr: sum(rate(http_requests_total{job="app",code=~"5.."}[6h])) / sum(rate(http_requests_total{job="app"}[6h]))
+  - name: sli_latency
+    interval: 30s
+    rules:
+      - record: sli:grafana:latency:p95
+        expr: histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job="grafana"}[5m])) by (le)) * 1000
 
-  - record: slo:error_ratio:30d
-    expr: sum(increase(http_requests_total{job="app",code=~"5.."}[30d])) / sum(increase(http_requests_total{job="app"}[30d]))
+      - record: sli:grafana:latency:p99
+        expr: histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket{job="grafana"}[5m])) by (le)) * 1000
 
-  - record: slo:availability
-    expr: 1 - slo:error_ratio:5m
+      - record: sli:prometheus:latency:p95
+        expr: histogram_quantile(0.95, sum(rate(prometheus_http_request_duration_seconds_bucket{handler="/api/v1/query"}[5m])) by (le)) * 1000
 
-  - record: slo:latency_p95_ms
-    expr: histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job="app"}[5m])) by (le)) * 1000
+      - record: sli:prometheus:latency:p99
+        expr: histogram_quantile(0.99, sum(rate(prometheus_http_request_duration_seconds_bucket{handler="/api/v1/query"}[5m])) by (le)) * 1000
 
-  - record: slo:error_budget_remaining_ratio
-    expr: (slo:target - slo:error_ratio:30d) / slo:target
+  - name: sli_errors
+    interval: 30s
+    rules:
+      - record: sli:grafana:errors:rate5m
+        expr: sum(rate(http_requests_total{job="grafana",code=~"5.."}[5m])) / sum(rate(http_requests_total{job="grafana"}[5m]))
 
-  - record: slo:burn_rate:ratio
-    expr: (slo:error_ratio:1h / slo:error_ratio:30d)
+      - record: sli:prometheus:errors:rate5m
+        expr: sum(rate(prometheus_http_requests_total{handler="/api/v1/query",code=~"5.."}[5m])) / sum(rate(prometheus_http_requests_total{handler="/api/v1/query"}[5m]))
+
+      - record: sli:alertmanager:errors:rate5m
+        expr: sum(rate(alertmanager_http_requests_total{handler="/api/v1/alerts",statusCode=~"5.."}[5m])) / sum(rate(alertmanager_http_requests_total{handler="/api/v1/alerts"}[5m]))
+
+  - name: slo_error_budget
+    interval: 1m
+    rules:
+      - record: slo:error_budget:remaining:ratio
+        expr: (0.999 - (sum(increase(http_requests_total{code=~"5.."}[30d])) / sum(increase(http_requests_total[30d])))) / 0.999
+
+      - record: slo:error_budget:burn_rate:ratio
+        expr: (sum(rate(http_requests_total{code=~"5.."}[1h])) / sum(rate(http_requests_total[1h]))) / 0.001
+
+  - name: slo_burn_rate
+    interval: 30s
+    rules:
+      - record: slo:burn_rate:5m
+        expr: (sum(rate(http_requests_total{code=~"5.."}[5m])) / sum(rate(http_requests_total[5m]))) / (goal:availability:total / 100)
+
+      - record: slo:burn_rate:1h
+        expr: (sum(rate(http_requests_total{code=~"5.."}[1h])) / sum(rate(http_requests_total[1h]))) / (goal:availability:total / 100)
+
+      - record: slo:burn_rate:6h
+        expr: (sum(rate(http_requests_total{code=~"5.."}[6h])) / sum(rate(http_requests_total[6h]))) / (goal:availability:total / 100)
+
+      - record: slo:burn_rate:30m
+        expr: (sum(rate(http_requests_total{code=~"5.."}[30m])) / sum(rate(http_requests_total[30m]))) / (goal:availability:total / 100)
+
+  - name: sli_uptime
+    interval: 1m
+    rules:
+      - record: sli:service:up
+        expr: up{job=~"prometheus|grafana|alertmanager"}
+
+      - record: sli:service:availability:1h
+        expr: avg_over_time(up{job=~"prometheus|grafana|alertmanager"}[1h])
+
+      - record: sli:service:availability:24h
+        expr: avg_over_time(up{job=~"prometheus|grafana|alertmanager"}[24h])
+
+      - record: sli:service:availability:7d
+        expr: avg_over_time(up{job=~"prometheus|grafana|alertmanager"}[7d])
+
+      - record: sli:service:availability:30d
+        expr: avg_over_time(up{job=~"prometheus|grafana|alertmanager"}[30d])

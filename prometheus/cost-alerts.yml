@@ -1,51 +1,71 @@
 groups:
-- name: cost_alerts
-  interval: 5m
-  rules:
-  - alert: DailyCostHigh
-    expr: sum(increase(aws_cost_total[1d])) > 2
-    for: 1h
-    labels:
-      severity: warning
-    annotations:
-      summary: "Daily AWS cost exceeded $2"
+  - name: cost_alerts
+    interval: 5m
+    rules:
+      - alert: HighDailyCost
+        expr: rate(aws_billing_estimated_charges_total[24h]) > 2
+        for: 1h
+        annotations:
+          summary: "High daily AWS cost detected"
+          description: "Daily AWS cost is ${{ $value | humanize }}, exceeding $2/day threshold."
 
-  - alert: MonthlyCostHighDev
-    expr: sum(increase(aws_cost_total{environment="dev"}[30d])) > 20
-    for: 2h
-    labels:
-      severity: warning
-    annotations:
-      summary: "Monthly cost for dev exceeded $20"
+      - alert: MonthlyBudgetExceededDev
+        expr: rate(aws_billing_estimated_charges_total[30d]) * 30 > 20
+        for: 1h
+        annotations:
+          summary: "Dev environment monthly budget exceeded"
+          description: "Projected monthly cost is ${{ $value | humanize }}, exceeding $20 dev budget."
 
-  - alert: MonthlyCostHighProd
-    expr: sum(increase(aws_cost_total{environment="prod"}[30d])) > 50
-    for: 2h
-    labels:
-      severity: critical
-    annotations:
-      summary: "Monthly cost for prod exceeded $50"
+      - alert: MonthlyBudgetExceededProd
+        expr: rate(aws_billing_estimated_charges_total[30d]) * 30 > 50
+        for: 1h
+        annotations:
+          summary: "Prod environment monthly budget exceeded"
+          description: "Projected monthly cost is ${{ $value | humanize }}, exceeding $50 prod budget."
 
-  - alert: CostSpikeDayOverDay
-    expr: (sum(increase(aws_cost_total[1d])) - sum(increase(aws_cost_total[2d]))/1) / (sum(increase(aws_cost_total[2d]))/1 + 1e-9) > 0.20
-    for: 30m
-    labels:
-      severity: warning
-    annotations:
-      summary: "Cost spike >20% day-over-day"
+      - alert: CostSpike
+        expr: >
+          (rate(aws_billing_estimated_charges_total[1h]) > 1.2 * avg_over_time(rate(aws_billing_estimated_charges_total[1h])[7d:1h]))
+        for: 30m
+        annotations:
+          summary: "Cost spike detected"
+          description: "AWS cost has spiked more than 20% above 7-day average."
 
-  - alert: CostForecastExceedsBudget
-    expr: predict_linear(sum(aws_cost_total[7d]), 86400) > 100
-    for: 1h
-    labels:
-      severity: warning
-    annotations:
-      summary: "7-day trend forecasts exceeding budget"
+      - alert: MonthlyBudgetWarningDev
+        expr: rate(aws_billing_estimated_charges_total[30d]) * 30 > 16
+        for: 2h
+        annotations:
+          summary: "Dev environment approaching monthly budget"
+          description: "Projected monthly cost is ${{ $value | humanize }}, at 80% of $20 dev budget."
 
-  - alert: ServiceCostAnomaly
-    expr: increase(aws_cost_service_total[1d]) > (0.2 * increase(aws_cost_service_total[30d]) / 30)
-    for: 1h
-    labels:
-      severity: warning
-    annotations:
-      summary: "Service cost anomaly detected"
+      - alert: MonthlyBudgetWarningProd
+        expr: rate(aws_billing_estimated_charges_total[30d]) * 30 > 40
+        for: 2h
+        annotations:
+          summary: "Prod environment approaching monthly budget"
+          description: "Projected monthly cost is ${{ $value | humanize }}, at 80% of $50 prod budget."
+
+      - alert: CostExporterDown
+        expr: up{job="cost-exporter"} == 0
+        for: 10m
+        annotations:
+          summary: "Cost exporter is down"
+          description: "Cost exporter has been unreachable for 10 minutes."
+
+      - alert: CostDataStale
+        expr: time() - timestamp(aws_billing_estimated_charges_total) > 7200
+        for: 5m
+        annotations:
+          summary: "Cost data is stale"
+          description: "Cost data has not been updated for more than 2 hours."
+
+  - name: cost_optimization
+    interval: 1h
+    rules:
+      - alert: HighServiceCost
+        expr: >
+          topk(5, sum by (service) (rate(aws_billing_service_charges_total[24h]))) > 10
+        for: 1h
+        annotations:
+          summary: "High cost for service: {{ $labels.service }}"
+          description: "Service {{ $labels.service }} has cost ${{ $value | humanize }}/month (>$10)."

@@ -1,4 +1,4 @@
-variable "region" {
+variable "aws_region" {
   description = "AWS region"
   type        = string
   default     = "us-west-2"
@@ -11,28 +11,23 @@ variable "project_name" {
 }
 
 variable "environment" {
-  description = "Environment name"
+  description = "Environment name (dev/prod)"
   type        = string
   default     = "dev"
 }
 
 variable "vpc_id" {
-  description = "VPC ID"
+  description = "VPC ID where resources will be created"
   type        = string
 }
 
 variable "subnet_ids" {
-  description = "Subnet IDs"
+  description = "List of subnet IDs for EC2 instance"
   type        = list(string)
 }
 
-variable "ami" {
-  description = "AMI Ubuntu 24.04 LTS"
-  type        = string
-}
-
-variable "key_name" {
-  description = "SSH key pair name"
+variable "ami_id" {
+  description = "AMI ID (Ubuntu 22.04 LTS recommended)"
   type        = string
 }
 
@@ -42,48 +37,53 @@ variable "instance_type" {
   default     = "t3.small"
 }
 
+variable "key_name" {
+  description = "EC2 SSH key pair name"
+  type        = string
+}
+
 variable "instance_count" {
-  description = "Number of instances"
+  description = "Number of EC2 instances to create"
   type        = number
   default     = 1
 }
 
 variable "volume_size" {
-  description = "Root volume size GB"
+  description = "Root EBS volume size in GB"
   type        = number
   default     = 20
 }
 
 variable "create_eip" {
-  description = "Create Elastic IP"
+  description = "Create Elastic IP for the instance"
   type        = bool
   default     = false
 }
 
 variable "owner" {
-  description = "Owner tag"
+  description = "Owner tag for resources"
   type        = string
 }
 
 variable "cost_center" {
-  description = "Cost center tag"
+  description = "Cost center tag for billing"
   type        = string
 }
 
 variable "application" {
-  description = "Application tag"
+  description = "Application name tag"
   type        = string
   default     = "monitoring"
 }
 
-variable "ssm_cidr_blocks" {
-  description = "CIDR blocks for SSM access"
+variable "ssh_cidr_blocks" {
+  description = "CIDR blocks allowed for SSH access"
   type        = list(string)
   default     = ["0.0.0.0/0"]
 }
 
 variable "allowed_cidr_blocks" {
-  description = "CIDR blocks for monitoring ports"
+  description = "CIDR blocks allowed for HTTP/HTTPS access"
   type        = list(string)
   default     = ["0.0.0.0/0"]
 }

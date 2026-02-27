@@ -1,59 +1,101 @@
 groups:
-- name: slo_alerts
-  interval: 1m
-  rules:
-  - alert: SLOFastBurn
-    expr: slo:burn_rate:ratio{window="1h",short_window="5m"} > 14.4
-    for: 10m
-    labels:
-      severity: critical
-    annotations:
-      summary: "Fast burn rate exceeded (critical)"
+  - name: slo_fast_burn
+    interval: 30s
+    rules:
+      - alert: SLOFastBurnRate
+        expr: >
+          (slo:burn_rate:1h > 14.4) and (slo:burn_rate:5m > 14.4)
+        for: 2m
+        annotations:
+          summary: "SLO fast burn rate - budget exhaustion in ~2 hours"
+          description: "1h burn rate: {{ $value | humanize }}x, 5m burn rate: {{ $value | humanize }}x"
 
-  - alert: SLOSlowBurn
-    expr: slo:burn_rate:ratio{window="6h",short_window="30m"} > 6
-    for: 30m
-    labels:
-      severity: warning
-    annotations:
-      summary: "Slow burn rate exceeded (warning)"
+  - name: slo_slow_burn
+    interval: 1m
+    rules:
+      - alert: SLOSlowBurnRate
+        expr: >
+          (slo:burn_rate:6h > 6) and (slo:burn_rate:30m > 6)
+        for: 15m
+        annotations:
+          summary: "SLO slow burn rate - budget exhaustion in ~5 days"
+          description: "6h burn rate: {{ $value | humanize }}x, 30m burn rate: {{ $value | humanize }}x"
 
-  - alert: ErrorBudget50
-    expr: slo:error_budget_remaining_ratio < 0.5
-    for: 10m
-    labels:
-      severity: warning
-    annotations:
-      summary: "Error budget below 50%"
+  - name: slo_error_budget
+    interval: 5m
+    rules:
+      - alert: ErrorBudgetNearlyExhausted
+        expr: slo:error_budget:remaining:ratio < 0.1
+        for: 30m
+        annotations:
+          summary: "Error budget nearly exhausted"
+          description: "Error budget remaining: {{ $value | humanizePercentage }}"
 
-  - alert: ErrorBudget75
-    expr: slo:error_budget_remaining_ratio < 0.25
-    for: 10m
-    labels:
-      severity: warning
-    annotations:
-      summary: "Error budget below 25% (75% consumed)"
+      - alert: ErrorBudgetExhausted
+        expr: slo:error_budget:remaining:ratio <= 0
+        for: 5m
+        annotations:
+          summary: "Error budget exhausted"
+          description: "No error budget remaining for the 30-day window"
 
-  - alert: ErrorBudget90
-    expr: slo:error_budget_remaining_ratio < 0.10
-    for: 5m
-    labels:
-      severity: critical
-    annotations:
-      summary: "Error budget below 10% (90% consumed)"
+  - name: slo_latency
+    interval: 1m
+    rules:
+      - alert: HighLatencyP95
+        expr: sli:grafana:latency:p95 > 500
+        for: 5m
+        annotations:
+          summary: "High latency detected (P95 > 500ms)"
+          description: "P95 latency: {{ $value | humanize }}ms"
 
-  - alert: ErrorBudgetExhausted
-    expr: slo:error_budget_remaining_ratio <= 0
-    for: 1m
-    labels:
-      severity: critical
-    annotations:
-      summary: "Error budget exhausted"
+      - alert: CriticalLatencyP99
+        expr: sli:grafana:latency:p99 > 1000
+        for: 2m
+        annotations:
+          summary: "Critical latency detected (P99 > 1s)"
+          description: "P99 latency: {{ $value | humanize }}ms"
 
-  - alert: LatencyP95Violation
-    expr: slo:latency_p95_ms > 500
-    for: 5m
-    labels:
-      severity: warning
-    annotations:
-      summary: "P95 latency exceeded 500ms"
+  - name: slo_errors
+    interval: 1m
+    rules:
+      - alert: HighErrorRate
+        expr: sli:grafana:errors:rate5m > 0.001
+        for: 5m
+        annotations:
+          summary: "High error rate detected (> 0.1%)"
+          description: "Error rate: {{ $value | humanizePercentage }}"
+
+      - alert: CriticalErrorRate
+        expr: sli:grafana:errors:rate5m > 0.05
+        for: 2m
+        annotations:
+          summary: "Critical error rate detected (> 5%)"
+          description: "Error rate: {{ $value | humanizePercentage }}"
+
+  - name: ssl_certificate_expiry
+    interval: 1h
+    rules:
+      - alert: SSLCertificateExpiringSoon
+        expr: ssl_certificate_not_after < (time() + 30 * 24 * 3600)
+        for: 1h
+        annotations:
+          summary: "SSL certificate expiring soon (< 30 days)"
+          description: "Certificate expires at {{ $value | formatDate }}"
+
+      - alert: SSLCertificateExpiringImminent
+        expr: ssl_certificate_not_after < (time() + 7 * 24 * 3600)
+        for: 10m
+        annotations:
+          summary: "SSL certificate expiring imminently (< 7 days)"
+          description: "Certificate expires at {{ $value | formatDate }}"
+
+  - name: slo_multi_service
+    interval: 30s
+    rules:
+      - alert: MultipleServicesDown
+        expr: >
+          (count(sli:service:up == 0) >= 2)
+        for: 2m
+        annotations:
+          summary: "Multiple critical services are down"
+          description: "{{ $value | humanize }} services are down"

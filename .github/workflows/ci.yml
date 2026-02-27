@@ -1,52 +1,90 @@
----
 name: CI
 
 on:
+  push:
+    branches:
+      - main
+      - develop
   pull_request:
-    branches: [main, develop]
-  workflow_dispatch:
+    branches:
+      - main
+      - develop
 
 jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Markdown lint
+
+      - name: Markdown Lint
+        uses: nosborn/github-action-markdown-cli@v3.3.0
+        with:
+          files: .
+          config_file: .markdownlint.json
+
+      - name: YAML Lint - Docker Compose
         run: |
-          echo "Skipping specialized markdown linter"
-      - name: YAML lint
+          sudo apt-get install -y yamllint
+          yamllint docker-compose.yml
+
+      - name: YAML Lint - Prometheus
         run: |
-          yamllint -v . || true
+          yamllint prometheus/
+
+      - name: YAML Lint - Grafana
+        run: |
+          yamllint grafana/
+
+      - name: YAML Lint - AlertManager
+        run: |
+          yamllint alertmanager/
 
   terraform:
-    needs: [lint]
+    needs: lint
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
-      - name: Terraform fmt check
-        run: terraform fmt -check -recursive
-      - name: Terraform validate (dev/prod)
+        uses: hashicorp/setup-terraform@v2
+
+      - name: Terraform Format Check
+        run: terraform fmt -check -recursive terraform/
+
+      - name: Terraform Validate - Dev
         run: |
-          terraform init -backend=false || true
-          terraform validate || true
+          cd terraform/environments/dev
+          terraform init -backend=false
+          terraform validate
+
+      - name: Terraform Validate - Prod
+        run: |
+          cd terraform/environments/prod
+          terraform init -backend=false
+          terraform validate
 
   docker:
-    needs: [lint]
+    needs: lint
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Docker Compose config
-        run: docker-compose -f docker-compose.yml config
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Validate Docker Compose
+        run: docker-compose config > /dev/null
 
   security:
     needs: [terraform, docker]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Trivy FS scan
-        run: |
-          curl -sSLf https://raw.githubusercontent.com/aquasecurity/trivy/main/\
-            contrib/install.sh | sh -s -- -b /usr/local/bin
-          trivy fs --exit-code 1 --severity HIGH,CRITICAL . || true
+
+      - name: Run Trivy Filesystem Scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'table'
+          exit-code: '1'

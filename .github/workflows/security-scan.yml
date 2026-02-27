@@ -1,45 +1,52 @@
----
 name: Security Scan
 
 on:
+  push:
+    branches:
+      - main
+      - develop
   pull_request:
-    branches: [main]
+    branches:
+      - main
+      - develop
   schedule:
-    - cron: '0 0 * * 0'
-  workflow_dispatch:
+    - cron: '0 0 * * 0'  # Sunday midnight UTC
 
 jobs:
-  trivy:
+  trivy-scan:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Install Trivy
-        run: |
-          curl -sSLf https://raw.githubusercontent.com/aquasecurity/trivy/main/\
-            contrib/install.sh | sh -s -- -b /usr/local/bin
-      - name: Run Trivy FS scan (SARIF)
-        run: |
-          trivy fs --format sarif --output trivy-results.sarif . || true
-      - name: Upload SARIF
-        uses: github/code-scanning-action/upload-sarif@v2
-        with:
-          sarif_file: trivy-results.sarif
 
-  checkov:
+      - name: Run Trivy Vulnerability Scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+
+      - name: Upload Trivy Results to GitHub Security
+        uses: github/codeql-action/upload-sarif@v2
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+  checkov-scan:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Setup Python
-        uses: actions/setup-python@v4
+
+      - name: Run Checkov IaC Scan
+        uses: bridgecrewio/checkov-action@master
         with:
-          python-version: 3.11
-      - name: Install Checkov
-        run: pip install checkov
-      - name: Run Checkov on terraform/
-        run: |
-          checkov -d terraform/ -o sarif \
-            --output-file-path checkov-results.sarif || true
-      - name: Upload SARIF
-        uses: github/code-scanning-action/upload-sarif@v2
+          directory: terraform/
+          framework: terraform
+          output_format: sarif
+          output_file_path: 'checkov-results.sarif'
+
+      - name: Upload Checkov Results to GitHub Security
+        uses: github/codeql-action/upload-sarif@v2
+        if: always()
         with:
-          sarif_file: checkov-results.sarif
+          sarif_file: 'checkov-results.sarif'

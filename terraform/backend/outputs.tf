@@ -1,44 +1,63 @@
 output "s3_bucket_name" {
-  value       = ""
-  description = "S3 bucket name for terraform state (populated after apply)"
+  description = "S3 bucket for Terraform state"
+  value       = aws_s3_bucket.terraform_state.id
 }
 
 output "s3_bucket_arn" {
-  value       = ""
-  description = "S3 bucket ARN for terraform state (populated after apply)"
+  description = "ARN of S3 bucket for Terraform state"
+  value       = aws_s3_bucket.terraform_state.arn
 }
 
 output "dynamodb_table_name" {
-  value       = ""
-  description = "DynamoDB table name used for state locking"
+  description = "DynamoDB table for Terraform lock"
+  value       = aws_dynamodb_table.terraform_lock.name
 }
 
 output "dynamodb_table_arn" {
-  value       = ""
-  description = "DynamoDB table ARN used for state locking"
+  description = "ARN of DynamoDB table for Terraform lock"
+  value       = aws_dynamodb_table.terraform_lock.arn
 }
 
 output "github_actions_policy_arn" {
-  value       = ""
-  description = "ARN of IAM policy for GitHub Actions to access the backend"
+  description = "ARN of IAM policy for GitHub Actions"
+  value       = aws_iam_policy.github_actions.arn
 }
 
 output "backend_config" {
-  value = <<EOF
-S3 backend configuration example (replace placeholders):
+  description = "Backend configuration and GitHub Secrets to configure"
+  value       = <<-EOT
+# Development Backend Configuration
+# In: terraform/environments/dev/backend.tf
+terraform {
+  backend "s3" {
+    bucket         = "${aws_s3_bucket.terraform_state.id}"
+    key            = "prometheus/dev/terraform.tfstate"
+    region         = "us-west-2"
+    dynamodb_table = "${aws_dynamodb_table.terraform_lock.name}"
+    encrypt        = true
+  }
+}
 
-dev:
-  bucket = "<S3_BUCKET_NAME>"
-  key    = "dev/terraform.tfstate"
-  region = "<AWS_REGION>"
-  dynamodb_table = "<DYNAMODB_TABLE_NAME>"
+# Production Backend Configuration
+# In: terraform/environments/prod/backend.tf
+terraform {
+  backend "s3" {
+    bucket         = "${aws_s3_bucket.terraform_state.id}"
+    key            = "prometheus/prod/terraform.tfstate"
+    region         = "us-west-2"
+    dynamodb_table = "${aws_dynamodb_table.terraform_lock.name}"
+    encrypt        = true
+  }
+}
 
-prod:
-  bucket = "<S3_BUCKET_NAME>"
-  key    = "prod/terraform.tfstate"
-  region = "<AWS_REGION>"
-  dynamodb_table = "<DYNAMODB_TABLE_NAME>"
+# GitHub Secrets to Configure
+# In: GitHub repo → Settings → Secrets and variables → Actions
 
-# Configure these values as GitHub Secrets (e.g. TF_BACKEND_DEV, TF_BACKEND_PROD)
-EOF
+TF_STATE_BUCKET="${aws_s3_bucket.terraform_state.id}"
+TF_STATE_LOCK_TABLE="${aws_dynamodb_table.terraform_lock.name}"
+AWS_REGION="us-west-2"
+AWS_ACCESS_KEY_ID="[Create IAM user for CI/CD]"
+AWS_SECRET_ACCESS_KEY="[Create IAM user for CI/CD]"
+SSH_PRIVATE_KEY="[Base64 encoded SSH private key for EC2 access]"
+  EOT
 }

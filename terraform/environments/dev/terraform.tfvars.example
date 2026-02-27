@@ -1,0 +1,27 @@
+# Development environment Terraform variables
+# Copy to terraform.tfvars and fill in your actual values
+
+aws_region = "us-west-2"
+project_name = "prometheus-stack-dev"
+environment = "dev"
+
+# AWS resources
+vpc_id    = "vpc-xxxxxxxxx"
+subnet_ids = ["subnet-xxxxxxxxx", "subnet-yyyyyyyyy"]
+ami_id    = "ami-xxxxxxxxx"  # Ubuntu 22.04 LTS
+instance_type = "t3.small"
+key_name  = "your-ec2-key-pair"
+
+# Instance configuration
+instance_count = 1
+volume_size    = 20
+create_eip     = false
+
+# Tagging
+owner       = "devops-team"
+cost_center = "engineering"
+application = "monitoring"
+
+# Security
+ssh_cidr_blocks      = ["0.0.0.0/0"]  # Restrict this in production!
+allowed_cidr_blocks  = ["0.0.0.0/0"]  # Restrict this in production!

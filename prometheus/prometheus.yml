@@ -1,35 +1,61 @@
 global:
   scrape_interval: 15s
   evaluation_interval: 15s
+  external_labels:
+    cluster: prometheus-stack
+    environment: production
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+            - alertmanager:9093
 
 rule_files:
   - /etc/prometheus/alertrules.yml
-  # - /etc/prometheus/cost-alerts.yml
-  # - /etc/prometheus/slo-alerts.yml
-  # - /etc/prometheus/slo-rules.yml
+  - /etc/prometheus/slo-rules.yml
+  - /etc/prometheus/slo-alerts.yml
+  - /etc/prometheus/cost-alerts.yml
 
 scrape_configs:
   - job_name: 'prometheus'
     static_configs:
       - targets: ['localhost:9090']
+        labels:
+          instance: 'prometheus-primary'
 
-  - job_name: 'node_exporter'
+  - job_name: 'node-exporter'
     static_configs:
       - targets: ['node-exporter:9100']
+        labels:
+          instance: 'system'
+          service: 'node-exporter'
 
   - job_name: 'alertmanager'
     static_configs:
       - targets: ['alertmanager:9093']
+        labels:
+          instance: 'alertmanager-primary'
+          service: 'alertmanager'
 
   - job_name: 'grafana'
     static_configs:
       - targets: ['grafana:3000']
+        labels:
+          instance: 'grafana-primary'
+          service: 'grafana'
 
-  - job_name: 'cost_exporter'
+  - job_name: 'cost-exporter'
+    scrape_interval: 5m
+    scrape_timeout: 30s
     static_configs:
       - targets: ['cost-exporter:9091']
+        labels:
+          instance: 'aws-cost-exporter'
+          service: 'cost-exporter'
 
   - job_name: 'file_sd'
     file_sd_configs:
       - files:
           - /etc/prometheus/file_sd/targets.json
+        refresh_interval: 30s

@@ -1,0 +1,27 @@
+# Production environment Terraform variables
+# Copy to terraform.tfvars and fill in your actual values
+
+aws_region = "us-west-2"
+project_name = "prometheus-stack-prod"
+environment = "prod"
+
+# AWS resources
+vpc_id    = "vpc-xxxxxxxxx"
+subnet_ids = ["subnet-xxxxxxxxx", "subnet-yyyyyyyyy"]
+ami_id    = "ami-xxxxxxxxx"  # Ubuntu 22.04 LTS
+instance_type = "t3.medium"
+key_name  = "your-ec2-key-pair"
+
+# Instance configuration
+instance_count = 1
+volume_size    = 50
+create_eip     = true
+
+# Tagging
+owner       = "platform-team"
+cost_center = "engineering"
+application = "monitoring"
+
+# Security (restrict to your network in production)
+ssh_cidr_blocks      = ["10.0.0.0/8"]   # Required: restrict to your VPN or bastion
+allowed_cidr_blocks  = ["10.0.0.0/8"]   # Required: restrict to your internal network

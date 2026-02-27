@@ -1,153 +1,79 @@
 groups:
-  - name: slo_recording_rules
-    interval: 15s
+  - name: system_alerts
+    interval: 30s
     rules:
-      # Availability recording rules (5m, 30m, 1h, 6h, 30d windows)
-      - record: slo:availability:5m
-        expr: |
-          (
-            sum(rate(http_requests_total{job="app",status=~"2.."}[5m])) 
-            / 
-            sum(rate(http_requests_total{job="app"}[5m]))
-          ) * 100
+      - alert: InstanceDown
+        expr: up{job!="alertmanager"} == 0
+        for: 5m
+        annotations:
+          summary: "Instance {{ $labels.instance }} is down"
+          description: "{{ $labels.instance }} of job {{ $labels.job }} has been down for 5+ minutes."
 
-      - record: slo:availability:30m
-        expr: |
-          (
-            sum(rate(http_requests_total{job="app",status=~"2.."}[30m])) 
-            / 
-            sum(rate(http_requests_total{job="app"}[30m]))
-          ) * 100
+      - alert: HighCPUUsage
+        expr: (100 - (avg by (instance) (irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100)) > 80
+        for: 5m
+        annotations:
+          summary: "High CPU usage on {{ $labels.instance }}"
+          description: "CPU usage is {{ $value | humanize }}% (threshold: > 80%)"
 
-      - record: slo:availability:1h
-        expr: |
-          (
-            sum(rate(http_requests_total{job="app",status=~"2.."}[1h])) 
-            / 
-            sum(rate(http_requests_total{job="app"}[1h]))
-          ) * 100
+      - alert: HighMemoryUsage
+        expr: (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) > 0.85
+        for: 5m
+        annotations:
+          summary: "High memory usage on {{ $labels.instance }}"
+          description: "Memory usage is {{ $value | humanizePercentage }} (threshold: > 85%)"
 
-      - record: slo:availability:6h
-        expr: |
-          (
-            sum(rate(http_requests_total{job="app",status=~"2.."}[6h])) 
-            / 
-            sum(rate(http_requests_total{job="app"}[6h]))
-          ) * 100
+      - alert: DiskSpaceLow
+        expr: (node_filesystem_avail_bytes{fstype!~"tmpfs|fuse.lxcfs"} / node_filesystem_size_bytes) < 0.15
+        for: 5m
+        annotations:
+          summary: "Low disk space on {{ $labels.instance }}"
+          description: "Available disk space is {{ $value | humanizePercentage }} (threshold: < 15%)"
 
-      - record: slo:availability:30d
-        expr: |
-          (
-            sum(increase(http_requests_total{job="app",status=~"2.."}[30d])) 
-            / 
-            sum(increase(http_requests_total{job="app"}[30d]))
-          ) * 100
+      - alert: DiskSpaceCritical
+        expr: (node_filesystem_avail_bytes{fstype!~"tmpfs|fuse.lxcfs"} / node_filesystem_size_bytes) < 0.10
+        for: 2m
+        annotations:
+          summary: "Critical disk space on {{ $labels.instance }}"
+          description: "Available disk space is {{ $value | humanizePercentage }} (threshold: < 10%)"
 
-      # Error budget recording rules
-      - record: slo:error_budget:30d
-        expr: (100 - 99.9) * 30 * 24 * 60 / 100
+      - alert: HighDiskIO
+        expr: rate(node_disk_io_time_seconds_total[5m]) > 0.8
+        for: 5m
+        annotations:
+          summary: "High disk I/O on {{ $labels.instance }}"
+          description: "Disk I/O time is {{ $value | humanize }}s (threshold: > 0.8)"
 
-      - record: slo:error_budget_remaining:30d
-        expr: |
-          (
-            (100 - 99.9) * 30 * 24 * 60 / 100
-            -
-            (
-              100 - (
-                sum(increase(http_requests_total{job="app",status=~"2.."}[30d])) 
-                / 
-                sum(increase(http_requests_total{job="app"}[30d]))
-              ) * 100
-            ) * 30 * 24 * 60 / 100
-          )
+      - alert: NetworkErrors
+        expr: rate(node_network_transmit_errs_total[5m]) + rate(node_network_receive_errs_total[5m]) > 0
+        for: 5m
+        annotations:
+          summary: "Network errors on {{ $labels.instance }}"
+          description: "Network error rate is {{ $value | humanize }} errors/sec"
 
-      # Latency recording rules (p95, p99)
-      - record: slo:latency_p95:5m
-        expr: histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le))
+  - name: prometheus_alerts
+    interval: 30s
+    rules:
+      - alert: PrometheusConfigReloadFailed
+        expr: prometheus_config_last_reload_successful == 0
+        for: 5m
+        annotations:
+          summary: "Prometheus configuration reload failed"
+          description: "Prometheus failed to reload configuration at {{ $value | formatTime }}"
 
-      - record: slo:latency_p95:30m
-        expr: histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[30m])) by (le))
+      - alert: PrometheusTooManyRestarts
+        expr: changes(prometheus_tsdb_startups_total[15m]) > 2
+        for: 5m
+        annotations:
+          summary: "Prometheus has restarted too many times"
+          description: "Prometheus has restarted {{ $value | humanize }} times in 15 minutes"
 
-      - record: slo:latency_p95:1h
-        expr: histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[1h])) by (le))
-
-      - record: slo:latency_p95:6h
-        expr: histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[6h])) by (le))
-
-      - record: slo:latency_p99:5m
-        expr: histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket[5m])) by (le))
-
-      - record: slo:latency_p99:30m
-        expr: histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket[30m])) by (le))
-
-      # Error rate recording rules
-      - record: slo:error_rate:5m
-        expr: |
-          (
-            sum(rate(http_requests_total{job="app",status=~"5.."}[5m])) 
-            / 
-            sum(rate(http_requests_total{job="app"}[5m]))
-          ) * 100
-
-      - record: slo:error_rate:30m
-        expr: |
-          (
-            sum(rate(http_requests_total{job="app",status=~"5.."}[30m])) 
-            / 
-            sum(rate(http_requests_total{job="app"}[30m]))
-          ) * 100
-
-      - record: slo:error_rate:1h
-        expr: |
-          (
-            sum(rate(http_requests_total{job="app",status=~"5.."}[1h])) 
-            / 
-            sum(rate(http_requests_total{job="app"}[1h]))
-          ) * 100
-
-      # Burn rate recording rules (fast and slow)
-      - record: slo:burn_rate:5m
-        expr: |
-          (
-            (100 - slo:availability:5m) / (100 - 99.9) 
-          )
-
-      - record: slo:burn_rate:30m
-        expr: |
-          (
-            (100 - slo:availability:30m) / (100 - 99.9) 
-          )
-
-      - record: slo:burn_rate:1h
-        expr: |
-          (
-            (100 - slo:availability:1h) / (100 - 99.9) 
-          )
-
-      - record: slo:burn_rate:6h
-        expr: |
-          (
-            (100 - slo:availability:6h) / (100 - 99.9) 
-          )
-
-      # Multi-service aggregations
-      - record: slo:multi_service:availability
-        expr: |
-          (
-            sum(rate(http_requests_total{status=~"2.."}[5m])) by (service)
-            /
-            sum(rate(http_requests_total[5m])) by (service)
-          ) * 100
-
-      - record: slo:multi_service:latency_p95
-        expr: |
-          histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (service, le))
-
-      # Request count recording rules
-      - record: slo:request_rate:5m
-        expr: sum(rate(http_requests_total[5m]))
-
-      - record: slo:request_rate:30m
+      - alert: AlertmanagerDown
+        expr: up{job="alertmanager"} == 0
+        for: 5m
+        annotations:
+          summary: "AlertManager is down"
+          description: "AlertManager instance has been down for 5+ minutes"
         expr: sum(rate(http_requests_total[30m]))
 
       # p50 and p99 latency (additional windows)

@@ -1,31 +1,55 @@
----
-name: Docker Validate
+name: Docker Validation
 
 on:
-  pull_request:
+  push:
+    branches:
+      - main
+      - develop
     paths:
       - 'docker-compose.yml'
       - 'prometheus/**'
       - 'grafana/**'
       - 'alertmanager/**'
-  workflow_dispatch:
+  pull_request:
+    branches:
+      - main
+      - develop
+    paths:
+      - 'docker-compose.yml'
+      - 'prometheus/**'
+      - 'grafana/**'
+      - 'alertmanager/**'
 
 jobs:
-  validate:
+  docker-validate:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Docker Compose config
-        run: docker-compose -f docker-compose.yml config
-      - name: Docker Compose up
-        run: docker-compose up -d --build
-      - name: wait services
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Validate Docker Compose Config
+        run: docker-compose config > /dev/null
+
+      - name: Start Services
+        run: docker-compose up -d
+
+      - name: Wait for Services
         run: sleep 30
-      - name: healthchecks
-        run: |
-          curl -fS http://localhost:9090/-/healthy || exit 1
-          curl -fS http://localhost:3000/ || true
-          curl -fS http://localhost:9093/ || exit 1
-          curl -fS http://localhost:9100/ || true
-      - name: Teardown
+
+      - name: Health Check - Prometheus
+        run: curl -f http://localhost:9090/-/healthy || exit 1
+
+      - name: Health Check - Grafana
+        run: curl -f http://localhost:3000/api/health || exit 1
+
+      - name: Health Check - AlertManager
+        run: curl -f http://localhost:9093/-/healthy || exit 1
+
+      - name: Health Check - Node Exporter
+        run: curl -f http://localhost:9100/metrics || exit 1
+
+      - name: Cleanup
+        if: always()
         run: docker-compose down -v
